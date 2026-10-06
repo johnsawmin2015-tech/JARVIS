@@ -1,0 +1,4 @@
+SPEC.md
+pnpm-lock.yaml
+**/.next/
+coverage/
