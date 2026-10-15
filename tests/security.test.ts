@@ -46,8 +46,8 @@ describe("untrusted input defenses", () => {
   it("confines file reads to the configured root", async () => {
     const tool = createFileReadTool(process.cwd());
     await expect(tool.execute(context, { path: "/etc/hosts" })).rejects.toThrow("escapes");
-    const spec = await tool.execute(context, { path: "SPEC.md" });
-    expect(spec.content).toContain("JARVIS");
+    const readme = await tool.execute(context, { path: "README.md" });
+    expect(readme.content).toContain("JARVIS");
   });
 
   it("never returns an unknown credential", () => {

@@ -11,3 +11,6 @@ coverage/
 pnpm-debug.log*
 artifacts/
 tmp/
+
+# Maintained privately. Do not publish the system specification.
+SPEC.md

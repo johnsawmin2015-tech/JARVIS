@@ -1,7 +1,7 @@
 # Threat model and controls
 
-The following maps every threat in `SPEC.md` section 40 to an implemented control and a test or
-verification path.
+The following maps the platform threat catalog to an implemented control and a verification path.
+The numbered catalog is maintained in the private system specification.
 
 1. **Prompt injection:** retrieved content is explicitly demoted and modifying actions influenced
    by it require approval. Covered by context and policy tests.

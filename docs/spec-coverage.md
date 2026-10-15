@@ -1,9 +1,9 @@
-# SPEC.md implementation coverage
+# Implementation coverage
 
-`SPEC.md` is the source of truth. The repository was empty except for that file, and the earlier
-`architecture.md`, `requirements.md`, `roadmap.md`, and `plan.md` referenced by the spec were not
-present. This implementation therefore follows the immediate v0.1 Foundation milestone in section
-63, while adding reusable control-plane components from later phases.
+The full system specification is maintained privately and is the source of truth for these
+requirements. This repository records the v0.1 foundation milestone, together with reusable
+control-plane components required by later phases. Section numbers below refer to that private
+specification.
 
 ## Implemented and integrated
 
