@@ -32,9 +32,9 @@ verification path.
     failure events prevent false completion. Live failover requires provider integration tests.
 14. **Model regression:** evaluation cases/results and aggregate quality metrics are permanent
     schema components. Golden provider tasks remain deployment data.
-15. **Cost runaway:** routing checks remaining budget and execution limits include maximum spend;
-    token/cost telemetry is persisted. Daily/monthly preflight enforcement must be connected before
-    autonomous tool loops are enabled.
+15. **Cost runaway:** chat routing enforces daily/monthly/task preflight budgets; durable loops
+    enforce steps, retries, wall time, spend, tool calls, and concurrency. Token/cost and tool usage
+    are persisted before completion.
 
 ## Security invariants
 

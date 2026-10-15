@@ -1,16 +1,20 @@
 import { notFound } from "next/navigation";
+import Link from "next/link";
 import {
   listApprovals,
   listArtifacts,
   listEvents,
-  listMemories,
   listProjects,
   listTasks,
+  searchMemories,
   usageSummary,
+  isDemoMode,
   type DashboardItem,
 } from "@jarvis/database";
 import { requireSession } from "../../../lib/auth";
 import { TaskForm } from "../../../components/task-form";
+import { MemoryPanel } from "../../../components/memory-panel";
+import { ApprovalPanel } from "../../../components/approval-panel";
 
 export const dynamic = "force-dynamic";
 
@@ -51,7 +55,13 @@ const metadata = {
 
 type Section = keyof typeof metadata;
 
-export default async function SectionPage({ params }: { params: Promise<{ section: string }> }) {
+export default async function SectionPage({
+  params,
+  searchParams,
+}: {
+  params: Promise<{ section: string }>;
+  searchParams: Promise<{ q?: string }>;
+}) {
   const { section: rawSection } = await params;
   if (!(rawSection in metadata)) notFound();
   const section = rawSection as Section;
@@ -68,7 +78,9 @@ export default async function SectionPage({ params }: { params: Promise<{ sectio
           {tasks.map((task) => (
             <li className="list-item" key={task.id}>
               <div>
-                <strong>{task.objective}</strong>
+                <strong>
+                  <Link href={`/tasks/${task.id}`}>{task.objective}</Link>
+                </strong>
                 <p className="muted">
                   Priority {task.priority} · Risk {task.riskClass}
                 </p>
@@ -109,28 +121,64 @@ export default async function SectionPage({ params }: { params: Promise<{ sectio
       </div>
     );
   } else if (section === "settings") {
+    const demoMode = isDemoMode();
     const providers = [
+      ["Mode", demoMode ? "Local demo · process-local reset on restart" : "Persistent"],
       ["AI Gateway", Boolean(process.env.AI_GATEWAY_API_KEY && process.env.GATEWAY_MODEL_ID)],
       ["OpenAI", Boolean(process.env.OPENAI_API_KEY && process.env.OPENAI_MODEL_ID)],
       ["Anthropic", Boolean(process.env.ANTHROPIC_API_KEY && process.env.ANTHROPIC_MODEL_ID)],
-      ["PostgreSQL", Boolean(process.env.DATABASE_URL)],
-      ["Redis", Boolean(process.env.REDIS_URL)],
+      ["PostgreSQL", demoMode ? "Bypassed in demo" : Boolean(process.env.DATABASE_URL)],
+      ["Redis", demoMode ? "Bypassed in demo" : Boolean(process.env.REDIS_URL)],
     ] as const;
     content = (
       <ul className="list">
         {providers.map(([name, configured]) => (
           <li className="list-item" key={name}>
             <strong>{name}</strong>
-            <span className="badge">{configured ? "Configured" : "Not configured"}</span>
+            <span className="badge">
+              {typeof configured === "string"
+                ? configured
+                : configured
+                  ? "Configured"
+                  : demoMode
+                    ? "Not used"
+                    : "Not configured"}
+            </span>
           </li>
         ))}
       </ul>
     );
+  } else if (section === "memory") {
+    const query = (await searchParams).q?.slice(0, 500) ?? "";
+    const memories = await searchMemories(session.ownerId, query);
+    content = (
+      <MemoryPanel
+        memories={memories.map((memory) => ({
+          ...memory,
+          confidence: Number(memory.confidence),
+          importance: Number(memory.importance),
+          sourceTimestamp: memory.sourceTimestamp.toISOString(),
+          expiresAt: memory.expiresAt?.toISOString() ?? null,
+          createdAt: memory.createdAt.toISOString(),
+          updatedAt: memory.updatedAt.toISOString(),
+        }))}
+        query={query}
+      />
+    );
+  } else if (section === "approvals") {
+    const approvals = await listApprovals(session.ownerId);
+    content = (
+      <ApprovalPanel
+        approvals={approvals.map((approval) => ({
+          ...approval,
+          occurredAt: approval.occurredAt.toISOString(),
+          expiresAt: approval.expiresAt.toISOString(),
+        }))}
+      />
+    );
   } else {
     let items: DashboardItem[];
     if (section === "projects") items = await listProjects(session.ownerId);
-    else if (section === "memory") items = await listMemories(session.ownerId);
-    else if (section === "approvals") items = await listApprovals(session.ownerId);
     else items = await listArtifacts(session.ownerId);
     content = <ItemList items={items} />;
   }

@@ -8,13 +8,14 @@
     "node": ">=24"
   },
   "scripts": {
-    "dev": "corepack pnpm --filter @jarvis/web dev",
+    "dev": "node scripts/dev.mjs",
     "build": "corepack pnpm --filter @jarvis/web build",
     "lint": "eslint .",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "test:watch": "vitest",
     "db:migrate": "tsx scripts/migrate.ts",
+    "worker": "tsx services/worker/src/cli.ts",
     "format": "prettier --write .",
     "format:check": "prettier --check ."
   },

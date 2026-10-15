@@ -24,19 +24,45 @@ primitives needed by later durable agents.
   limits, timeout, bounded logs, and automatic teardown
 - evaluation metric aggregation and security-focused tests
 
-## Local setup
+## Database-free local demo
 
-Requirements: Node.js 24+, Corepack, Docker, and provider credentials.
+The current checkout includes an ignored `.env.local` configured with `DEMO_MODE=true` and the local
+demo account. After dependencies are installed, start the entire demo from the repository root:
+
+```bash
+npm run dev
+```
+
+Open `http://localhost:3000` and sign in with the owner credentials configured in `.env.local`.
+The root command explicitly loads that file before starting Next.js in `apps/web`.
+
+Demo mode is deliberately limited:
+
+- `DEMO_MODE=true` is required and is rejected when `NODE_ENV=production`.
+- authentication still verifies the configured email and explicit local demo password; normal mode
+  continues to require the scrypt password hash.
+- state is process-local and resets whenever the development server restarts.
+- PostgreSQL, Redis, workers, Docker, model providers, GitHub, and external tools are not contacted.
+- chat output and simulated task reports are visibly labeled as demo output.
+
+For a new checkout, copy `.env.example` to `.env.local`, set `DEMO_MODE=true`, and configure the
+owner secret fields. `.env.local` remains ignored.
+
+## Persistent local setup
+
+Requirements: Node.js 24+, Corepack, Docker, PostgreSQL/Redis, and provider credentials.
 
 ```bash
 cp .env.example .env.local
 corepack pnpm install
 docker compose up -d
 corepack pnpm db:migrate
-corepack pnpm dev
+npm run dev
+# In a second terminal:
+corepack pnpm worker
 ```
 
-Generate the owner password fields:
+Generate owner password fields:
 
 ```bash
 node -e "const c=require('node:crypto'); const s=c.randomBytes(16).toString('hex'); console.log('OWNER_PASSWORD_SALT='+s); console.log('OWNER_PASSWORD_HASH='+c.scryptSync(process.argv[1],s,64).toString('hex'))" 'replace-me'
@@ -57,4 +83,12 @@ corepack pnpm build
 corepack pnpm peers check
 ```
 
-See `docs/spec-coverage.md` for requirement-level coverage and deferred production work.
+Natural-language durable task patterns:
+
+- include a public `https://` URL to retrieve it through the SSRF-restricted web tool
+- ask to read a workspace file such as `SPEC.md`
+- include a GitHub `/blob/` URL for credential-brokered repository reads
+- use `sandbox: <JavaScript>` to request exact approval, isolated execution, independent
+  verification, execution memory, and a final report
+
+See `docs/spec-coverage.md` for requirement-level coverage and environment-gated verification.

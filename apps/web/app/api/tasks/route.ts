@@ -1,13 +1,13 @@
 import { createHash, randomUUID } from "node:crypto";
 import { NextResponse, type NextRequest } from "next/server";
 import { z } from "zod";
+import { planObjective } from "@jarvis/agents";
 import { appendEvent, createTask, listTasks } from "@jarvis/database";
 import { assertSameOrigin, requireSession, UnauthorizedError } from "../../../lib/auth";
 
 const createTaskSchema = z.object({
   objective: z.string().trim().min(3).max(20_000),
-  acceptanceCriteria: z.array(z.string().trim().min(1).max(2_000)).min(1).max(100),
-  type: z.string().trim().min(1).max(100).default("general"),
+  acceptanceCriteria: z.array(z.string().trim().min(1).max(2_000)).max(100).default([]),
 });
 
 export async function GET() {
@@ -36,18 +36,35 @@ export async function POST(request: NextRequest) {
               `${session.ownerId}:${input.objective}:${JSON.stringify(input.acceptanceCriteria)}`,
             )
             .digest("hex");
-    const taskId = await createTask(session.ownerId, { ...input, idempotencyKey });
+    const plan = planObjective(input.objective, input.acceptanceCriteria);
+    const approvalAction = plan.steps.find(
+      (step) => step.action?.riskClass === "R2" || step.action?.riskClass === "R3",
+    )?.action;
+    const created = await createTask(session.ownerId, {
+      objective: input.objective,
+      type: plan.steps.find((step) => step.action)?.action?.toolName ?? "analysis",
+      plan,
+      idempotencyKey,
+      ...(approvalAction ? { approvalAction } : {}),
+    });
     const trace = {
       requestId: request.headers.get("x-request-id") ?? randomUUID(),
       traceId: randomUUID(),
       ownerId: session.ownerId,
-      taskId,
+      taskId: created.taskId,
     };
     await appendEvent(trace, "task.created", {
       objective: input.objective,
-      acceptanceCriteria: input.acceptanceCriteria,
+      acceptanceCriteria: plan.acceptanceCriteria,
     });
-    return NextResponse.json({ taskId }, { status: 201 });
+    await appendEvent(trace, "plan.created", { plan });
+    if (created.approvalId) {
+      await appendEvent(trace, "approval.requested", {
+        approvalId: created.approvalId,
+        action: approvalAction,
+      });
+    }
+    return NextResponse.json({ ...created, plan }, { status: 201 });
   } catch (error) {
     if (error instanceof UnauthorizedError) {
       return NextResponse.json({ error: error.message }, { status: 401 });

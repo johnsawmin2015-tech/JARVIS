@@ -22,6 +22,10 @@ function configuredProviders(): Array<Exclude<ProviderPreference, "automatic">> 
   return configured;
 }
 
+export function hasConfiguredProvider(): boolean {
+  return configuredProviders().length > 0;
+}
+
 export function selectModel(
   preferenceInput: ProviderPreference,
   promptLength: number,

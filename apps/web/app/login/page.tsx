@@ -44,6 +44,9 @@ export default function LoginPage() {
           <p className="eyebrow">Owner access</p>
           <h1>Welcome back.</h1>
           <p className="subhead">Authenticate to access your private intelligence workspace.</p>
+          <p className="demo-login-note">
+            Local demo mode · process-local data resets when the development server restarts.
+          </p>
         </div>
         <label className="stack">
           <span className="muted">Email</span>

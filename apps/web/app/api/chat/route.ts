@@ -7,11 +7,17 @@ import {
   appendEvent,
   createConversation,
   currentBudgetUsage,
+  isDemoMode,
   recordModelExecution,
   saveMessage,
 } from "@jarvis/database";
 import { assertSameOrigin, requireSession, UnauthorizedError } from "../../../lib/auth";
-import { providerPreferenceSchema, selectModel } from "../../../lib/models";
+import {
+  createDemoChatText,
+  createDemoTextStreamResponse,
+  shouldUseDemoChat,
+} from "../../../lib/demo-chat";
+import { hasConfiguredProvider, providerPreferenceSchema, selectModel } from "../../../lib/models";
 
 export const runtime = "nodejs";
 export const maxDuration = 60;
@@ -47,6 +53,25 @@ export async function POST(request: NextRequest) {
       input.conversationId ??
       (await createConversation(session.ownerId, latest.content.slice(0, 80)));
     await saveMessage(session.ownerId, conversationId, "user", { text: latest.content });
+    const requestId = randomUUID();
+    const traceId = randomUUID();
+    const trace = { requestId, traceId, ownerId: session.ownerId };
+
+    if (shouldUseDemoChat(isDemoMode(), hasConfiguredProvider())) {
+      const text = createDemoChatText(latest.content);
+      await saveMessage(session.ownerId, conversationId, "assistant", { text, demo: true });
+      await appendEvent(trace, "message.created", {
+        conversationId,
+        role: "assistant",
+        demo: true,
+        providerCalled: false,
+      });
+      return createDemoTextStreamResponse(text, {
+        "x-conversation-id": conversationId,
+        "x-request-id": requestId,
+        "cache-control": "no-store",
+      });
+    }
 
     const selected = selectModel(
       input.provider,
@@ -70,10 +95,7 @@ export async function POST(request: NextRequest) {
       },
       projectedCostUsd,
     );
-    const requestId = randomUUID();
-    const traceId = randomUUID();
     const startedAt = performance.now();
-    const trace = { requestId, traceId, ownerId: session.ownerId };
     await appendEvent(trace, "model.requested", {
       provider: selected.provider,
       modelId: selected.modelId,

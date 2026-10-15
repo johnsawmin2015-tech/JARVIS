@@ -1,8 +1,9 @@
 import { promisify } from "node:util";
-import { scrypt, timingSafeEqual } from "node:crypto";
+import { createHash, scrypt, timingSafeEqual } from "node:crypto";
 import { cookies, headers } from "next/headers";
 import { SignJWT, jwtVerify } from "jose";
 import { z } from "zod";
+import { isDemoMode } from "@jarvis/database";
 
 const scryptAsync = promisify(scrypt);
 const COOKIE_NAME = "jarvis_session";
@@ -19,6 +20,13 @@ function secret(): Uint8Array {
 }
 
 export async function verifyOwnerPassword(password: string): Promise<boolean> {
+  const demoPassword = process.env.DEMO_PASSWORD;
+  if (isDemoMode() && demoPassword) {
+    return timingSafeEqual(
+      createHash("sha256").update(password).digest(),
+      createHash("sha256").update(demoPassword).digest(),
+    );
+  }
   const expectedHex = process.env.OWNER_PASSWORD_HASH;
   const salt = process.env.OWNER_PASSWORD_SALT;
   if (!expectedHex || !salt || password.length > 1_024) return false;
